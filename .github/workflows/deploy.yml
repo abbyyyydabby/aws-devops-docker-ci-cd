@@ -20,8 +20,19 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Debug ECR vars
+        run: |
+            echo "ACCOUNT=${{ secrets.AWS_ACCOUNT_ID }}"
+            echo "REGION=${{ secrets.AWS_REGION }}"
+            echo "REPO=${{ secrets.ECR_REPOSITORY }}"
+
+
       - name: Build Docker image
-        run: docker build -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest .
+        run: |
+            docker build -t \
+            ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest \ 
+            .
+
 
       - name: Push Docker image
         run: docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ secrets.ECR_REPOSITORY }}:latest
