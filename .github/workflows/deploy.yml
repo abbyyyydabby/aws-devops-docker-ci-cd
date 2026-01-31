@@ -2,19 +2,22 @@ name: CI-CD Docker to AWS EC2
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+
+env:
+  IMAGE_NAME: devops-app
+  IMAGE_TAG: latest
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+  ECR_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/devops-app:latest
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -22,23 +25,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3️⃣ Login to ECR
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 4️⃣ Build image (simple, stable)
       - name: Build Docker image
-        run: docker build -t devops-app:latest .
+        run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
 
-      # 5️⃣ Tag image (ONE LINE – NO SLASHES)
       - name: Tag Docker image
-        run: docker tag devops-app:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/devops-app:latest
+        run: docker tag $IMAGE_NAME:$IMAGE_TAG $ECR_IMAGE
 
-      # 6️⃣ Push to ECR
       - name: Push Docker image to ECR
-        run: docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/devops-app:latest
+        run: docker push $ECR_IMAGE
 
-      # 7️⃣ Deploy on EC2
       - name: Deploy on EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -46,7 +44,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/devops-app:latest
+            docker pull $ECR_IMAGE
             docker stop devops-app || true
             docker rm devops-app || true
-            docker run -d -p 5000:5000 --name devops-app ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/devops-app:latest
+            docker run -d -p 5000:5000 --name devops-app $ECR_IMAGE
